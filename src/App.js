@@ -1,22 +1,33 @@
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
+
+import "react-lezer-highlighter/styles/default.css";
+import { Code } from "./lasers";
+import { useRef, useState } from "react";
+
+let _code = `fn main() {
+    println!("Hello, world!");
+}`;
 
 function App() {
+  const [code, setCode] = useState(_code);
+  const ref = useRef(false);
+
+  const change = () => {
+    setCode((code) =>
+      ref.current
+        ? code.replace("main", "jasna_dupa")
+        : code.replace("jasna_dupa", "main"),
+    );
+
+    ref.current = !ref.current;
+  };
+
   return (
-    <div className="App">
+    <div className="App" onClick={change}>
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <div>
+          <Code code={code} />
+        </div>
       </header>
     </div>
   );
