@@ -31,13 +31,11 @@ span {
         0.6s width;
     transition-behavior: allow-discrete;
 
-    @starting-style {
-        opacity: 0;
-    }
-
     width: calc(var(--length) * 1ch);
     opacity: 1;
     display: inline-block;
+    height: 1lh;
+    white-space: nowrap;
 }
 
 .remove {
@@ -46,7 +44,7 @@ span {
 
 .appear {
     @starting-style {
-        width: 0;
+        opacity: 0;
     }
 
     margin-left: calc(var(--length) * -1ch);

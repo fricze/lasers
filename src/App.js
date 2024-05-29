@@ -15,8 +15,8 @@ function App() {
   const change = () => {
     setCode((code) =>
       ref.current
-        ? code.replace("main", "jasna_dupa")
-        : code.replace("jasna_dupa", "main"),
+        ? code.replace("main", "jasna_dupa").replace("Hello", "hi")
+        : code.replace("jasna_dupa", "main").replace("hi", "Hello"),
     );
 
     ref.current = !ref.current;

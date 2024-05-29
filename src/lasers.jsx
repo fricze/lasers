@@ -23,6 +23,12 @@ import { useRef } from "react";
 
 export const Code = ({ code }) => {
   const prevResult = useRef();
+  const prevCode = useRef();
+  const actualResult = useRef();
+
+  if (prevCode.current === code) {
+    return <>{actualResult.current}</>;
+  }
 
   let result = [];
 
@@ -55,38 +61,46 @@ export const Code = ({ code }) => {
 
   highlightCode(code, parser.parse(code), classHighlighter, emit, emitBreak);
 
+  const real = [...result];
+
+  const newResult = [...result];
+
   if (prevResult.current) {
     prevResult.current.forEach((prevChild, idx) => {
-      const newChild = result[idx];
+      const newChild = newResult[idx];
 
       if (
         typeof prevChild === "object" &&
         newChild?.key !== prevChild.key &&
         result.every((newChild) => newChild.key !== prevChild.key)
       ) {
-        result[idx] = {
-          ...newChild,
-          props: {
-            ...newChild.props,
-            className: (newChild.props.className || "") + " appear",
-          },
-        };
+        const copy =
+          typeof newChild === "object"
+            ? {
+                ...newChild,
+                props: {
+                  ...newChild.props,
+                  className: (newChild.props.className || "") + " appear",
+                },
+              }
+            : newChild;
 
-        result.splice(idx, 0, {
+        newResult[idx] = copy;
+        newResult.splice(idx, 0, {
           ...prevChild,
           props: {
             ...prevChild.props,
             className: (prevChild.props.className || "") + " remove",
-            style: { "--length": newChild.props["data-length"] },
+            style: { "--length": newChild?.props?.["data-length"] || 0 },
           },
         });
       }
     });
   }
 
-  console.log(result);
+  actualResult.current = newResult;
+  prevResult.current = real;
+  prevCode.current = code;
 
-  prevResult.current = result;
-
-  return <>{result}</>;
+  return <>{actualResult.current}</>;
 };
