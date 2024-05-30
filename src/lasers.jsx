@@ -61,6 +61,8 @@ export const Code = ({ code }) => {
 
   highlightCode(code, parser.parse(code), classHighlighter, emit, emitBreak);
 
+  // debugger;
+
   const real = [...result];
 
   const newResult = [...result];
@@ -85,15 +87,23 @@ export const Code = ({ code }) => {
               }
             : newChild;
 
-        newResult[idx] = copy;
-        newResult.splice(idx, 0, {
+        const toRemove = {
           ...prevChild,
           props: {
             ...prevChild.props,
             className: (prevChild.props.className || "") + " remove",
             style: { "--length": newChild?.props?.["data-length"] || 0 },
           },
-        });
+        };
+
+        // newChild.props.className = newChild.props.className + " appear";
+
+        // newChild.props = {
+        //   ...newChild.props,
+        // };
+
+        newResult[idx] = copy;
+        newResult.splice(idx, 0, toRemove);
       }
     });
   }

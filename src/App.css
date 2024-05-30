@@ -1,6 +1,6 @@
 .App-header {
     padding-left: 30vw;
-    background-color: #282c34;
+    background-color: #8ad2ff;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -35,10 +35,17 @@ span {
     opacity: 1;
     display: inline-block;
     height: 1lh;
+    overflow: hidden;
     white-space: nowrap;
 }
 
 .remove {
+    @starting-style {
+        width: calc(var(--length) * 1ch);
+        opacity: 1;
+    }
+
+    width: calc(var(--new-length) * 1ch);
     opacity: 0;
 }
 
@@ -49,4 +56,39 @@ span {
 
     margin-left: calc(var(--length) * -1ch);
     transition-delay: 0.6s;
+}
+
+@keyframes new-appear {
+    0% {
+        display: none;
+        opacity: 0;
+    }
+    1% {
+        display: inline-block;
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.new {
+    animation: new-appear;
+    animation-fill-mode: both;
+    animation-duration: 0.6s;
+    animation-delay: 0.6s;
+}
+
+.empty {
+    @starting-style {
+        width: 0;
+        display: inline-block;
+    }
+
+    transition:
+        0s display,
+        0.6s width;
+    transition-behavior: allow-discrete;
+    transition-delay: 0.6s, 0s;
+    display: none;
 }
