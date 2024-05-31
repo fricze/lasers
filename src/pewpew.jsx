@@ -1,14 +1,111 @@
 import { parser } from "@lezer/rust";
-import { highlightCode, classHighlighter } from "@lezer/highlight";
+import { highlightTree } from "@lezer/highlight";
+import { classHighlighter } from "./highlight.ts";
+
+function highlightCode(
+  code,
+  tree,
+  highlighter,
+  putText,
+  putBreak,
+  from = 0,
+  to = code.length,
+) {
+  let pos = from;
+  function writeTo(p, classes) {
+    if (p <= pos) return;
+    for (let text = code.slice(pos, p), i = 0; ; ) {
+      let nextBreak = text.indexOf("\n", i);
+      let upto = nextBreak < 0 ? text.length : nextBreak;
+      if (upto > i) putText(text.slice(i, upto), classes, pos, p);
+      if (nextBreak < 0) break;
+      putBreak();
+      i = nextBreak + 1;
+    }
+    pos = p;
+  }
+
+  highlightTree(
+    tree,
+    highlighter,
+    (from, to, classes) => {
+      writeTo(from, "");
+      writeTo(to, classes);
+    },
+    from,
+    to,
+  );
+  writeTo(to, "");
+}
 
 export const Code = ({ code, replace, insert }) => {
   insert = insert || [];
 
-  let result = [];
+  const oldCode = code;
+
+  const result = [];
+  const oldResult = [];
 
   const typesMap = new Map();
+  const oldTypesMap = new Map();
+  const empties = [];
 
-  function emit(text, classes) {
+  const insertPositions = [];
+
+  highlightCode(
+    oldCode,
+    parser.parse(oldCode),
+    classHighlighter,
+    emitOld,
+    emitBreakOld,
+  );
+
+  // console.log(oldResult);
+
+  function emitOld(text, classes, start, stop) {
+    if (classes) {
+      const count = oldTypesMap.get(text) || 0;
+      oldTypesMap.set(text, count + 1);
+
+      const key = `${text}-${count}`;
+      oldResult.push(
+        <span
+          className={classes}
+          key={key}
+          data-key={key}
+          data-length={text.length}
+          style={{ "--length": text.length }}
+          title={key}
+        >
+          {text}
+        </span>,
+      );
+    } else {
+      oldResult.push(<span style={{ whiteSpace: "pre" }}>{text}</span>);
+    }
+  }
+
+  function emitBreakOld() {
+    oldResult.push("\n");
+  }
+
+  function emit(text, classes, start, stop) {
+    const insertPos =
+      insertPositions.find(
+        ([iStart, iStop]) => start >= iStart && stop <= iStop,
+      ) ||
+      insertPositions.find(
+        ([iStart, iStop]) => start === iStart && iStop === iStart,
+      );
+
+    let insertKey;
+    if (insertPos && typeof classes === "string") {
+      if (insertPos[0] === start) {
+        insertKey = insertPos[2];
+      }
+      classes = classes + " new";
+    }
+
     if (classes) {
       const count = typesMap.get(text) || 0;
       typesMap.set(text, count + 1);
@@ -22,12 +119,13 @@ export const Code = ({ code, replace, insert }) => {
           data-length={text.length}
           style={{ "--length": text.length }}
           title={key}
+          insert-key={insertKey}
         >
           {text}
         </span>,
       );
     } else {
-      result.push(text);
+      result.push(<span style={{ whiteSpace: "pre" }}>{text}</span>);
     }
   }
 
@@ -66,48 +164,41 @@ export const Code = ({ code, replace, insert }) => {
     `${str.slice(0, pos - 1)}${sub}${str.slice(pos + length - 1)}`;
 
   for (const [[token, index], value] of replace) {
+    // console.log(token, index);
     const position = getIndicesOf(token, code, true)[index];
-    console.log(token);
-    console.log(position);
+    insertPositions.push([
+      position,
+      position + value.length,
+      `${token}-${index}`,
+    ]);
+    console.log(insertPositions);
     code = replaceAt(code, value, position + 1, token.length);
   }
 
   highlightCode(code, parser.parse(code), classHighlighter, emit, emitBreak);
 
-  // this works for simple replace, but not for syntax analysis
-  // for (const [[openingToken, openingIndex], value] of replace) {
-  //   const key = `${openingToken}-${openingIndex}`;
-  //   console.log(key);
-  //   const index = result.findIndex((child) => child.key === key);
-  //   if (index < 0) {
-  //     break;
-  //   }
+  for (const [[token, index], value] of replace) {
+    const key = `${token}-${index}`;
+    const element = oldResult.find((element) => element.key === key);
+    if (!element) {
+      break;
+    }
+    const anchor = result.findIndex((a) => a?.props?.["insert-key"] === key);
+    // console.log(value);
 
-  //   const newToken = result[index];
-
-  //   const toAppear = {
-  //     ...newToken,
-  //     key: `hello-${Math.random()}`,
-  //     props: {
-  //       ...newToken.props,
-  //       children: value,
-  //       className: (newToken.props.className || "") + " appear",
-  //       style: { "--length": value.length || 0 },
-  //     },
-  //   };
-
-  //   const toRemove = {
-  //     ...newToken,
-  //     props: {
-  //       ...newToken.props,
-  //       className: (newToken.props.className || "") + " remove",
-  //       style: { ...newToken.props.style, "--new-length": value.length || 0 },
-  //     },
-  //   };
-
-  //   result[index] = toAppear;
-  //   result.splice(index, 0, toRemove);
-  // }
+    result.splice(anchor, 0, {
+      ...element,
+      props: {
+        ...element.props,
+        className: (element.props.className || "") + " empty",
+        style: {
+          ...element.props.style,
+          "--start": element.props.style["--length"],
+          "--length": value.length,
+        },
+      },
+    });
+  }
 
   for (const [
     [openingToken, openingIndex],
@@ -151,8 +242,8 @@ export const Code = ({ code, replace, insert }) => {
       0,
       <span
         className="empty"
-        key={"empty"}
-        style={{ "--length": length - 1 }}
+        key={"empty" + openingKey}
+        style={{ "--length": length - 1, "--start": 0 }}
       />,
     );
   }

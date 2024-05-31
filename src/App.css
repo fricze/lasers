@@ -58,6 +58,12 @@ span {
     transition-delay: 0.6s;
 }
 
+.replaced {
+    @starting-style {
+        opacity: 0;
+    }
+}
+
 @keyframes new-appear {
     0% {
         display: none;
@@ -81,14 +87,18 @@ span {
 
 .empty {
     @starting-style {
-        width: 0;
+        width: calc(var(--start) * 1ch);
         display: inline-block;
+        opacity: 1;
     }
+
+    opacity: 0;
 
     transition:
         0s display,
-        0.6s width;
+        0.6s width,
+        0.6s opacity;
     transition-behavior: allow-discrete;
-    transition-delay: 0.6s, 0s;
+    transition-delay: 0.6s, 0s, 0s;
     display: none;
 }

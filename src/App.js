@@ -14,13 +14,13 @@ fn boobies(first, second) {
 `;
 
 function App() {
-  const [replace, setReplace] = useState(
-    new Map([
-      [["(", 1], "["],
-      [[")", 1], "]"],
-      // [[`first`, 0], "print, titties"],
-    ]),
-  );
+  const [replace, setReplace] = useState([
+    [["(", 1], "["],
+    [[")", 1], "]"],
+    [[`first`, 0], ""],
+    [[`second`, 0], ""],
+    [[`"who likes boobies?!"`, 0], "i"],
+  ]);
 
   return (
     <div className="App">
@@ -31,7 +31,7 @@ function App() {
             replace={replace}
             insert={[
               [["(", 0], "dupa, argument", [")", 0]],
-              // [["(", "0"], "dupa, argument", [")", "0"]],
+              // [["{", 1], "call_me();", ["}", 1]],
             ]}
           />
         </div>
