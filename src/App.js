@@ -9,7 +9,7 @@ let code = `fn main() {
 }
 
 fn boobies(first, second) {
-    println!("who likes boobies?!");
+    println!("who likes ice cream?!");
 }
 `;
 
@@ -17,9 +17,9 @@ function App() {
   const [replace, setReplace] = useState([
     [["(", 1], "["],
     [[")", 1], "]"],
-    [[`first`, 0], ""],
-    [[`second`, 0], ""],
-    [[`"who likes boobies?!"`, 0], "i"],
+    [[`first, second`, 0], ""],
+    // [[`second`, 0], ""],
+    // [[`"who likes ice cream?!"`, 0], "i"],
   ]);
 
   return (

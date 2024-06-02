@@ -1,6 +1,7 @@
 import { parser } from "@lezer/rust";
 import { highlightTree } from "@lezer/highlight";
 import { classHighlighter } from "./highlight.ts";
+import { findTextMatches } from "./matches.ts";
 
 function highlightCode(
   code,
@@ -50,7 +51,43 @@ export const Code = ({ code, replace, insert }) => {
   const oldTypesMap = new Map();
   const empties = [];
 
-  const insertPositions = [];
+  const replacePositions = [];
+  const removePositions = [];
+
+  const insertAt = (str, sub, pos) =>
+    `${str.slice(0, pos)}${sub}${str.slice(pos)}`;
+
+  for (const [[token, index], value] of insert) {
+    const position = getIndicesOf(token, code, true)[index];
+    code = insertAt(code, value, position + 1);
+  }
+
+  const replaceAt = (str, sub, pos, length) =>
+    `${str.slice(0, pos - 1)}${sub}${str.slice(pos + length - 1)}`;
+
+  for (const [[token, index], value] of replace) {
+    const position = getIndicesOf(token, code, true)[index];
+    replacePositions.push([
+      position,
+      position + value.length,
+      `${token}-${index}`,
+      position + token.length,
+    ]);
+    code = replaceAt(code, value, position + 1, token.length);
+  }
+
+  for (const [[token, index], value] of replace) {
+    const position = getIndicesOf(token, oldCode, true)[index];
+    removePositions.push([
+      position,
+      position + value.length,
+      `${token}-${index}`,
+      position + token.length,
+    ]);
+    // code = replaceAt(code, value, position + 1, token.length);
+  }
+
+  const groups = [];
 
   highlightCode(
     oldCode,
@@ -60,19 +97,41 @@ export const Code = ({ code, replace, insert }) => {
     emitBreakOld,
   );
 
-  // console.log(oldResult);
-
   function emitOld(text, classes, start, stop) {
+    const insertPos = removePositions.find(
+      ([iStart, _, __, iStop]) => start >= iStart && stop <= iStop,
+    );
+
     if (classes) {
       const count = oldTypesMap.get(text) || 0;
       oldTypesMap.set(text, count + 1);
+      const group = insertPos ? insertPos[2] : ``;
 
       const key = `${text}-${count}`;
+      if (insertPos) {
+        groups.push([
+          group,
+          text,
+          <span
+            className={classes}
+            key={key}
+            data-key={key}
+            data-group={group}
+            data-length={text.length}
+            style={{ "--length": text.length }}
+            title={key}
+          >
+            {text}
+          </span>,
+        ]);
+      }
+
       oldResult.push(
         <span
           className={classes}
           key={key}
           data-key={key}
+          data-group={group}
           data-length={text.length}
           style={{ "--length": text.length }}
           title={key}
@@ -91,10 +150,10 @@ export const Code = ({ code, replace, insert }) => {
 
   function emit(text, classes, start, stop) {
     const insertPos =
-      insertPositions.find(
+      replacePositions.find(
         ([iStart, iStop]) => start >= iStart && stop <= iStop,
       ) ||
-      insertPositions.find(
+      replacePositions.find(
         ([iStart, iStop]) => start === iStart && iStop === iStart,
       );
 
@@ -134,13 +193,15 @@ export const Code = ({ code, replace, insert }) => {
   }
 
   function getIndicesOf(searchStr, str, caseSensitive) {
-    var searchStrLen = searchStr.length;
+    const searchStrLen = searchStr.length;
     if (searchStrLen === 0) {
       return [];
     }
-    var startIndex = 0,
-      index,
-      indices = [];
+
+    let startIndex = 0,
+      indices = [],
+      index;
+
     if (!caseSensitive) {
       str = str.toLowerCase();
       searchStr = searchStr.toLowerCase();
@@ -152,29 +213,6 @@ export const Code = ({ code, replace, insert }) => {
     return indices;
   }
 
-  const insertAt = (str, sub, pos) =>
-    `${str.slice(0, pos)}${sub}${str.slice(pos)}`;
-
-  for (const [[token, index], value] of insert) {
-    const position = getIndicesOf(token, code, true)[index];
-    code = insertAt(code, value, position + 1);
-  }
-
-  const replaceAt = (str, sub, pos, length) =>
-    `${str.slice(0, pos - 1)}${sub}${str.slice(pos + length - 1)}`;
-
-  for (const [[token, index], value] of replace) {
-    // console.log(token, index);
-    const position = getIndicesOf(token, code, true)[index];
-    insertPositions.push([
-      position,
-      position + value.length,
-      `${token}-${index}`,
-    ]);
-    console.log(insertPositions);
-    code = replaceAt(code, value, position + 1, token.length);
-  }
-
   highlightCode(code, parser.parse(code), classHighlighter, emit, emitBreak);
 
   for (const [[token, index], value] of replace) {
@@ -184,7 +222,6 @@ export const Code = ({ code, replace, insert }) => {
       break;
     }
     const anchor = result.findIndex((a) => a?.props?.["insert-key"] === key);
-    // console.log(value);
 
     result.splice(anchor, 0, {
       ...element,
@@ -247,6 +284,23 @@ export const Code = ({ code, replace, insert }) => {
       />,
     );
   }
+
+  const grouped = Map.groupBy(groups, (a) => a[0]);
+  console.log(
+    [...grouped.values()].map((group) => (
+      <span
+        className="group remove"
+        style={{
+          "--length": group
+            .map(([_, value]) => value.length)
+            .reduce((value, acc) => acc + value, 0),
+        }}
+      >
+        {group.map(([_, value, el]) => el)}
+      </span>
+    )),
+    // .map((el) => <span className="remove">{el}</span>)
+  );
 
   return <>{result}</>;
 };
